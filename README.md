@@ -37,3 +37,12 @@ GameStats2Text/
 ├── main.ipynb                     # End-to-end demonstration notebook
 └── README.md                      # Project overview and setup instructions
 
+
+Dependency Steps
+Install poetry
+run poetry install --no-root
+install poetry shell : poetry self add poetry-plugin-shell
+python -m ipykernel install --user --name gamestats2text --display-name "GameStats2Text (Poetry)"
+run poetry shell
+
+
