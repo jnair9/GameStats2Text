@@ -69,8 +69,11 @@ class GameStats2TextGenerator(nn.Module):
         tokenizer: GPT2Tokenizer,
         max_length: int = 128,
         num_beams: int = 5,
+        temperature: float = 1.0,
         top_k: int = 50,
-        top_p: float = 0.9
+        top_p: float = 0.9,
+        do_sample: bool = True,
+        repetition_penalty: float = 1.2
     ) -> str:
         """
         Beam-/sampling-based generation. Returns a single decoded string.
@@ -80,7 +83,7 @@ class GameStats2TextGenerator(nn.Module):
         input_ids = enc.input_ids
         attention_mask = enc.attention_mask
 
-        # 2) move everything to model’s device
+        # 2) move everything to model's device
         device = next(self.parameters()).device
         input_ids = input_ids.to(device)
         attention_mask = attention_mask.to(device)
@@ -103,14 +106,18 @@ class GameStats2TextGenerator(nn.Module):
             stats_proj = self.proj(stats_emb).unsqueeze(1).expand(-1, L, -1)
             fused = token_emb + stats_proj
 
-        # 5) generate
+        # 5) generate with improved parameters
         out_ids = self.gpt2.generate(
             inputs_embeds=fused,
             attention_mask=attention_mask,
             max_length=max_length,
             num_beams=num_beams,
+            do_sample=do_sample,           # Enable sampling
+            temperature=temperature,       # Add temperature
             top_k=top_k,
             top_p=top_p,
+            repetition_penalty=repetition_penalty,  # Penalize repetition
             eos_token_id=tokenizer.eos_token_id,
+            no_repeat_ngram_size=3         # Prevent repetition of 3-grams
         )
         return tokenizer.decode(out_ids[0], skip_special_tokens=True)
