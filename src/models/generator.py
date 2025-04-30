@@ -18,17 +18,15 @@ class GameStats2TextGenerator(nn.Module):
         fusion_method: str = 'concat'
     ):
         super().__init__()
-        # 1) encode raw stats → dense vector
         self.stats_encoder = StatsEncoder(
             input_dim=stats_input_dim,
             hidden_dims=stats_hidden_dims,
             output_dim=stats_output_dim
         )
-        # 2) GPT-2 with LM head
+
         self.gpt2 = GPT2LMHeadModel.from_pretrained(gpt_model_name)
         hidden_size = self.gpt2.config.n_embd
 
-        # 3) how to fuse: concat or add
         if fusion_method == 'concat':
             self.proj = nn.Linear(hidden_size + stats_output_dim, hidden_size)
         elif fusion_method == 'add':
@@ -38,20 +36,16 @@ class GameStats2TextGenerator(nn.Module):
         self.fusion_method = fusion_method
 
     def forward(self, stats, input_ids, attention_mask, labels=None):
-        # stats_emb: [B, S_out]
         stats_emb = self.stats_encoder(stats)
-        # token_emb: [B, L, H]
         token_emb = self.gpt2.transformer.wte(input_ids)
         L = token_emb.size(1)
 
-        # expand stats → [B, L, S_out]
         stats_exp = stats_emb.unsqueeze(1).expand(-1, L, -1)
 
-        # fuse
         if self.fusion_method == 'concat':
             fused = torch.cat([token_emb, stats_exp], dim=-1)
             fused = self.proj(fused)
-        else:  # add
+        else:
             stats_proj = self.proj(stats_emb).unsqueeze(1).expand(-1, L, -1)
             fused = token_emb + stats_proj
 
@@ -75,15 +69,10 @@ class GameStats2TextGenerator(nn.Module):
         do_sample: bool = True,
         repetition_penalty: float = 1.2
     ) -> str:
-        """
-        Beam-/sampling-based generation. Returns a single decoded string.
-        """
-        # 1) tokenize prompt
+
         enc = tokenizer(prompt, return_tensors='pt')
         input_ids = enc.input_ids
         attention_mask = enc.attention_mask
-
-        # 2) move everything to model's device
         device = next(self.parameters()).device
         input_ids = input_ids.to(device)
         attention_mask = attention_mask.to(device)
@@ -106,18 +95,17 @@ class GameStats2TextGenerator(nn.Module):
             stats_proj = self.proj(stats_emb).unsqueeze(1).expand(-1, L, -1)
             fused = token_emb + stats_proj
 
-        # 5) generate with improved parameters
         out_ids = self.gpt2.generate(
             inputs_embeds=fused,
             attention_mask=attention_mask,
             max_length=max_length,
             num_beams=num_beams,
-            do_sample=do_sample,           # Enable sampling
-            temperature=temperature,       # Add temperature
+            do_sample=do_sample, 
+            temperature=temperature,
             top_k=top_k,
             top_p=top_p,
-            repetition_penalty=repetition_penalty,  # Penalize repetition
+            repetition_penalty=repetition_penalty,
             eos_token_id=tokenizer.eos_token_id,
-            no_repeat_ngram_size=3         # Prevent repetition of 3-grams
+            no_repeat_ngram_size=3
         )
         return tokenizer.decode(out_ids[0], skip_special_tokens=True)

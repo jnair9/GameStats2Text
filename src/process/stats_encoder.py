@@ -23,19 +23,15 @@ class StatsEncoder(nn.Module):
             dropout (float): Dropout probability between layers.
         """
         super().__init__()
-        # Construct layer sizes list
         dims = [input_dim] + hidden_dims + [output_dim]
 
         layers: list[nn.Module] = []
-        # Build hidden layers with ReLU and dropout
         for i in range(len(dims) - 2):
             layers.append(nn.Linear(dims[i], dims[i + 1]))
             layers.append(nn.ReLU(inplace=True))
             layers.append(nn.Dropout(p=dropout))
-        # Final linear layer to projection
         layers.append(nn.Linear(dims[-2], dims[-1]))
 
-        # Combine into a Sequential module
         self.encoder = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
