@@ -27,10 +27,6 @@ GameStats2Text/
 │   │   ├── encoder.py             # Defines the encoder architecture
 │   │   └── generator.py           # Defines the response generator
 │   │
-│   ├── training/
-│   │   ├── train_encoder.py       # Training loop for encoder
-│   │   └── train_generator.py     # Training loop for generator
-│   │
 │   └── evaluation/
 │       └── metrics.py             # Evaluation metrics (BLEU, ROUGE, etc.)
 │
